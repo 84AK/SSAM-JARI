@@ -443,8 +443,13 @@ async function saveAttendance() {
     }
     
     setLoading(true);
+    // 출석 화면의 필터 기준(attendanceSchool/Grade/Class)으로 학생 필터링
     const attendanceData = state.students
-        .filter(s => s.class === state.selectedClass)
+        .filter(s =>
+            (state.attendanceSchool === 'all' || s.school === state.attendanceSchool) &&
+            (state.attendanceGrade === 'all' || String(s.grade) === String(state.attendanceGrade)) &&
+            (state.attendanceClass === 'all' || s.class === state.attendanceClass)
+        )
         .map(s => ({ 
             school: s.school || '',
             grade: s.grade || '', 
@@ -455,14 +460,25 @@ async function saveAttendance() {
             date: state.selectedDate 
         }));
 
+    if (attendanceData.length === 0) {
+        showToast('저장할 출석 데이터가 없습니다. 학생을 확인해주세요.', 'alert-circle');
+        setLoading(false);
+        return;
+    }
+
     try {
         const response = await fetch(state.gasUrl, {
             method: 'POST',
-            mode: 'no-cors', // Redirect issues with GAS often require no-cors for simple POST
             body: JSON.stringify({ action: 'saveAttendance', data: attendanceData })
         });
-        showToast('출석 데이터가 전송되었습니다!', 'check-circle');
+        const result = await response.json();
+        if (result.status === 'success') {
+            showToast(`${attendanceData.length}명의 출석 데이터가 저장되었습니다!`, 'check-circle');
+        } else {
+            showToast('저장 중 서버 오류가 발생했습니다.', 'alert-triangle');
+        }
     } catch (error) {
+        console.error('출석 저장 오류:', error);
         showToast('저장 중 오류가 발생했습니다.', 'x');
     } finally {
         setLoading(false);
@@ -736,11 +752,14 @@ async function confirmBulkUpload() {
 
 async function saveBulkStudentsToGAS(students) {
     try {
-        await fetch(state.gasUrl, {
+        const response = await fetch(state.gasUrl, {
             method: 'POST',
-            mode: 'no-cors',
             body: JSON.stringify({ action: 'saveStudents', data: students })
         });
+        const result = await response.json();
+        if (result.status !== 'success') {
+            console.error('GAS Sync Error: 서버 응답 실패', result);
+        }
     } catch (e) {
         console.error('GAS Sync Error:', e);
     }
@@ -930,12 +949,16 @@ async function saveSeatingToGAS() {
     }));
 
     try {
-        await fetch(state.gasUrl, {
+        const response = await fetch(state.gasUrl, {
             method: 'POST',
-            mode: 'no-cors',
             body: JSON.stringify({ action: 'saveSeating', data: payload })
         });
-        showToast(`${state.selectedClass} 자리 배치가 시트에 저장되었습니다!`, 'check-circle');
+        const result = await response.json();
+        if (result.status === 'success') {
+            showToast(`${state.selectedClass} 자리 배치가 시트에 저장되었습니다!`, 'check-circle');
+        } else {
+            showToast('저장 중 서버 오류가 발생했습니다.', 'alert-triangle');
+        }
     } catch (e) {
         showToast('저장 중 오류가 발생했습니다.', 'alert-triangle');
         console.error(e);
