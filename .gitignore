@@ -1,0 +1,17 @@
+# .gitignore
+
+# Docs 폴더 (블로그, 분석 문서, 작업 로그 등 내부 문서)
+Docs/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Node (혹시 npm 사용 시)
+node_modules/
+package-lock.json
